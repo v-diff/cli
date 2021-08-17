@@ -1,0 +1,8 @@
+main.py
+setup.py
+vdiff.egg-info/PKG-INFO
+vdiff.egg-info/SOURCES.txt
+vdiff.egg-info/dependency_links.txt
+vdiff.egg-info/entry_points.txt
+vdiff.egg-info/requires.txt
+vdiff.egg-info/top_level.txt
