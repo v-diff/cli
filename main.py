@@ -1,5 +1,5 @@
 import click 
-
+import subprocess
 
 # @click.group() works just like @click.command() except @click.group() can have subcommands 
 @click.command()
@@ -21,4 +21,4 @@ def run_custom_build_logic():
     click.echo('runing custom build logic')
 
 def fallback_to_docker(cmd):
-    click.echo('falling back to docker')
+    subprocess.call("docker " + ' '.join(cmd), shell=True)
