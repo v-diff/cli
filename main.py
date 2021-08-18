@@ -1,5 +1,5 @@
-import click, subprocess, getpass, shutil 
-
+import click, subprocess, getpass, shutil, requests
+SERVER_URL = ''
 @click.command()
 @click.argument('cmd', nargs=-1)
 def cli(cmd):
@@ -23,7 +23,9 @@ def run_custom_build_logic(args):
 
     args = list(args)
     zipped = shutil.make_archive('docker_dir', 'tar')
-
+    files = {'zipped_docker_dir': open('docker_dir.tar','rb')}
+    values = { 'build_arguments': args }
+    requests.post(SERVER_URL, files=files, data=values)
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
