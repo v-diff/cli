@@ -1,6 +1,6 @@
 import click, subprocess, getpass, shutil, requests, os
 SERVER_URL = ''
-@click.command()
+@click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
 def cli(cmd):
     '''
