@@ -44,7 +44,7 @@ def run_custom_build_logic(args):
     f = open(file_name, 'wb')
     f.write(r.content)
     f.close()
-    #os.system("docker load -i "+ file_name)
+    os.system("docker load -i "+ file_name)
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
