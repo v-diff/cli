@@ -23,27 +23,58 @@ def run_custom_build_logic(args):
 
     args = list(args)
     print(args)
-    zipped = shutil.make_archive('docker_dir', 'gztar')
+
+    #standardize the build context incase files need to be copied
+    if args[-1][-1] != "/":
+        args[-1] = str(args[-1])+"/"
+    print(args[-1])
+
+    #make sure dockerfile is copied if outside of directory
+    if args.index("-f") != ValueError:
+        dockerfile_index = args.index("-f")+1
+        dockerfile_path = str(args[dockerfile_index])
+
+        if dockerfile_path.startswith("../")==True:
+            #naming it dockerfile_vdiff to make it easier to delete
+            print(dockerfile_path,dockerfile_index)
+            shutil.copy(dockerfile_path, args[-1]+"dockerfile_vdiff")
+            args[dockerfile_index] == "dockerfile_vdiff"
+    
+    print("modifed args:")
+    print(args)
+    
+    zipped = shutil.make_archive('docker_dir', 'gztar', root_dir=args[-1])
+    #change the build arguement to be the root file since thats all that copied now
+    args[-1] = "."
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
     values = { 'build_arguments': " ".join(args) }
-    print("sending file")
+    
+    print("----Sending File----")
     r = requests.post(SERVER_URL, files=files, data=values)
-    print('file sent')
-    path = r.json()['poll_path']
-    #print(r, path)
+    print('----File Sent----')
+    #path = r.json()['poll_path']
     os.remove('docker_dir.tar.gz')
-    print("Begin Polling")
+    #if dockerfile copied then remove
+    if args[dockerfile_index] == "dockerfile_vdiff":
+        os.remove(args[-1]+"dockerfile_vdiff")
+    
+    #Poll for file every 5 seconds
+    print("----Begin Polling----")
     polling.poll(
     lambda: requests.get('http://127.0.0.1:8000'+path).status_code == 200,
-    step=60,
+    step=5,
     poll_forever=True
     )
     r = requests.get('http://127.0.0.1:8000'+path)
-    print("End Polling")
+    print("----End Polling----")
+
+    # # Save File
     file_name = ''.join(path[1:]) 
     f = open(file_name, 'wb')
     f.write(r.content)
     f.close()
+    
+    # #Docker Load
     os.system("docker load -i "+ file_name)
 
 def fallback_to_docker(cmd):
