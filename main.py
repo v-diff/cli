@@ -30,7 +30,7 @@ def run_custom_build_logic(args):
     print(args[-1])
 
     #make sure dockerfile is copied if outside of directory
-    if args.index("-f") != ValueError:
+    if args.__contains__("-f") == True:
         dockerfile_index = args.index("-f")+1
         dockerfile_path = str(args[dockerfile_index])
 
@@ -52,7 +52,7 @@ def run_custom_build_logic(args):
     print("----Sending File----")
     r = requests.post(SERVER_URL, files=files, data=values)
     print('----File Sent----')
-    #path = r.json()['poll_path']
+    path = r.json()['poll_path']
     os.remove('docker_dir.tar.gz')
     #if dockerfile copied then remove
     if args[dockerfile_index] == "dockerfile_vdiff":
@@ -60,11 +60,7 @@ def run_custom_build_logic(args):
     
     #Poll for file every 5 seconds
     print("----Begin Polling----")
-    polling.poll(
-    lambda: requests.get('http://127.0.0.1:8000'+path).status_code == 200,
-    step=5,
-    poll_forever=True
-    )
+    polling.poll(lambda: requests.get('http://127.0.0.1:8000'+path).status_code == 200, step=5, poll_forever=True)
     r = requests.get('http://127.0.0.1:8000'+path)
     print("----End Polling----")
 
