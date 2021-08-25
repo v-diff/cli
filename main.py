@@ -125,6 +125,7 @@ def run_custom_build_logic(args):
     values = { 'build_arguments': " ".join(args) }
     
     r = requests.post(SERVER_URL, files=files, data=values)
+    print("Response is ", r.__dict__)
     path = r.json()['poll_path']
     
     _clear_created_files(build_context, args)
