@@ -48,7 +48,7 @@ def _get_build_context(args):
             flag = True
             continue 
 
-        return i, arg
+        return i+1, arg
 
     return None, None 
 
@@ -82,12 +82,13 @@ def _add_dockerfile_to_build_context(args, build_context):
         print(args)
         path = str(args[index])
         shutil.copy(path, build_context + "dockerfile_vdiff")
-        args[index] == "dockerfile_vdiff"
+        args[index] = "dockerfile_vdiff"
+        print("_add_dockerfile end ",args)
 
 def _clear_created_files(build_context, args):
     os.remove('docker_dir.tar.gz')
     if "dockerfile_vdiff" in args:
-        os.remove(build_context/"dockerfile_vdiff")
+        os.remove(build_context+"dockerfile_vdiff")
 
 def run_custom_build_logic(args):
     print("Build arguments are: ", args)
@@ -120,6 +121,7 @@ def run_custom_build_logic(args):
     tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x)
     tar.close()
 
+    print(build_context, build_context_index, args[build_context_index])
     args[build_context_index] = "."
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
     values = { 'build_arguments': " ".join(args) }
