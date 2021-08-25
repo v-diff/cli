@@ -15,13 +15,19 @@ def cli(cmd):
     return fallback_to_docker(cmd)
 
 def run_custom_build_logic(args):
+    args = list(args)
+    if not len(args) > 1:
+        print("vdiff build, like docker build, requires exactly 1 argument.")
+        print("Usage:  vdiff build [OPTIONS] PATH | URL | -")
+        return 
+
     username = ''
     try:
         username = getpass.getuser()
     except:
         username = 'not_found'
 
-    args = list(args)
+    
     print(args)
 
     #standardize the build context incase files need to be copied
