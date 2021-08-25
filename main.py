@@ -1,4 +1,4 @@
-import click, subprocess, getpass, shutil, requests, os, polling
+import click, subprocess, getpass, shutil, requests, os, polling, glob, tarfile
 SERVER_URL = 'https://getdaemon.com'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -35,7 +35,7 @@ def _is_dockerfile_present(args):
 
 def _get_build_context(args):
     flag = False
-    for arg in args:
+    for i, arg in enumerate(args):
         if flag:
             flag = False 
             continue 
@@ -44,9 +44,45 @@ def _get_build_context(args):
             flag = True
             continue 
 
-        return arg 
+        return i, arg
 
-    return
+    return None, None 
+
+def _full_ignore_list(files_location, ignored_files):
+    out = []
+    print("full_ignore_list", ignored_files)
+    for i in ignored_files:
+        out += glob.glob(files_location+i,recursive=True)
+    return out
+
+def _get_dockerignore_files(build_context):
+    dockerignore_file_location = build_context + ".dockerignore"
+    dockerignore_exists = os.path.exists(dockerignore_file_location)
+    ignored_files = [] 
+
+    if dockerignore_exists == True:
+        fileObj = open(dockerignore_file_location, "r")
+        ignored_files = fileObj.read().splitlines()
+        fileObj.close()
+        ignored_files = full_ignore_list(build_context, ignored_files)
+    
+    return ignored_files
+
+def _add_dockerfile_to_build_context(args, build_context):
+    if "-f" in args or "--file" in args:
+        if '-f' in args:
+            index = args.index("-f") + 1
+        else:
+            index = args.index("--file") + 1
+
+        path = str(args[index])
+        shutil.copy(path, build_context + "dockerfile_vdiff")
+        args[index] == "dockerfile_vdiff"
+
+def _clear_created_files(build_context, args):
+    os.remove('docker_dir.tar.gz')
+    if "dockerfile_vdiff" in args:
+        os.remove(build_context/"dockerfile_vdiff")
 
 def run_custom_build_logic(args):
     print("Build arguments are: ", args)
@@ -62,56 +98,41 @@ def run_custom_build_logic(args):
         return 
 
     username = _get_username()
-    build_context = _get_build_context(args[1:])
-    print("Build context is: ", build_context)
-
+    build_context_index, build_context = _get_build_context(args[1:])
+    
     if not build_context:
         print("vdiff build, like docker build, requires exactly 1 argument.")
         print("Usage:  vdiff build [OPTIONS] PATH | URL | -")
-    
-    # make sure dockerfile is copied if outside of directory
-    dockerfile_index = 0
-    if "-f" in args:
-        dockerfile_index = args.index("-f") + 1
-        dockerfile_path = str(args[dockerfile_index])
+        return 
 
-        if dockerfile_path.startswith("../") == True:
-            # naming it dockerfile_vdiff to make it easier to delete
-            print(dockerfile_path, dockerfile_index)
-            shutil.copy(dockerfile_path, args[-1] + "dockerfile_vdiff")
-            args[dockerfile_index] == "dockerfile_vdiff"
-    
-    
-    zipped = shutil.make_archive('docker_dir', 'gztar', root_dir=args[-1])
+    if not build_context[-1] == "/":
+        build_context += '/'
 
-    # change the build arguement to be the root file since thats all that copied now
-    args[-1] = "."
+    ignored_files = _get_dockerignore_files(build_context)
+    _add_dockerfile_to_build_context(args, build_context)
+    tar = tarfile.open("docker_dir.tar.gz", "w:gz")
+    tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x)
+    tar.close()
+
+    args[build_context_index] = "."
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
     values = { 'build_arguments': " ".join(args) }
     
-    print("----Sending File----")
     r = requests.post(SERVER_URL, files=files, data=values)
-    print('----File Sent----')
     path = r.json()['poll_path']
-    print(path)
-    os.remove('docker_dir.tar.gz')
-    #if dockerfile copied then remove
-    if args[dockerfile_index] == "dockerfile_vdiff":
-        os.remove(args[-1]+"dockerfile_vdiff")
     
-    #Poll for file every 5 seconds
+    _clear_created_files(build_context, args)
+    
     print("----Begin Polling----")
     polling.poll(lambda: requests.get(SERVER_URL + '/poll' + path).status_code == 200, step=5, poll_forever=True)
     print("----End Polling----")
 
-    # # Save File
     r = requests.get(SERVER_URL + '/poll' + path)
     file_name = ''.join(path[1:]) 
     f = open(file_name, 'wb')
     f.write(r.content)
     f.close()
     
-    # Docker Load
     os.system("docker load -i "+ file_name)
 
 def fallback_to_docker(cmd):
