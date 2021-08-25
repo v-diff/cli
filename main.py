@@ -37,6 +37,10 @@ def _get_build_context(args):
     flag = False
     for i, arg in enumerate(args):
         if flag:
+            if arg.startswith('-'):
+                # two flags in a row
+                return None, None 
+
             flag = False 
             continue 
         
@@ -75,6 +79,7 @@ def _add_dockerfile_to_build_context(args, build_context):
         else:
             index = args.index("--file") + 1
 
+        print(args)
         path = str(args[index])
         shutil.copy(path, build_context + "dockerfile_vdiff")
         args[index] == "dockerfile_vdiff"
@@ -101,8 +106,9 @@ def run_custom_build_logic(args):
     build_context_index, build_context = _get_build_context(args[1:])
     
     if not build_context:
-        print("vdiff build, like docker build, requires exactly 1 argument.")
+        print("vdiff build, exactly like docker build, requires exactly 1 argument.")
         print("Usage:  vdiff build [OPTIONS] PATH | URL | -")
+        print("Please confirm your vdiff build syntax is correct.")
         return 
 
     if not build_context[-1] == "/":
