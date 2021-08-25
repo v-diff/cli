@@ -1,5 +1,5 @@
-import click, subprocess, getpass, shutil, requests, os, polling
-SERVER_URL = 'http://127.0.0.1:5000/'
+import click, subprocess, getpass, shutil, requests, os, polling, glob, tarfile
+SERVER_URL = 'https://getdaemon.com'
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
 def cli(cmd):
@@ -35,7 +35,21 @@ def run_custom_build_logic(args):
         args[-1] = str(args[-1])+"/"
     print(args[-1])
     
+    #check for .dockerignore file
+    dockerignore_file_location = args[-1]+".dockerignore"
+    dockerignore_exists = os.path.exists(dockerignore_file_location)
+    print(dockerignore_exists,dockerignore_file_location)
+    
+    if dockerignore_exists == True:
+        fileObj = open(dockerignore_file_location, "r")
+        ignored_files = fileObj.read().splitlines() #puts the file into an array
+        fileObj.close()
+        print(ignored_files)
+        ignored_files = full_ignore_list(args[-1],ignored_files)
+        print(ignored_files)
+
     #make sure dockerfile is copied if outside of directory
+    
     dockerfile_index = 0
     if args.__contains__("-f") == True:
         dockerfile_index = args.index("-f")+1
@@ -50,36 +64,49 @@ def run_custom_build_logic(args):
     print("modifed args:")
     print(args)
     
-    zipped = shutil.make_archive('docker_dir', 'gztar', root_dir=args[-1])
-    #change the build arguement to be the root file since thats all that copied now
-    args[-1] = "."
-    files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
-    values = { 'build_arguments': " ".join(args) }
+    tar = tarfile.open("docker_dir.tar.gz", "w:gz")
+    tar.add(args[-1], filter=lambda x: None if x.name in ignored_files else x)
+    tar.close()
+    # #change the build arguement to be the root file since thats all that copied now
+    # args[-1] = "."
+    # files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
+    # values = { 'build_arguments': " ".join(args) }
+    # print("----Sending File----")
+    # r = requests.post(SERVER_URL, files=files, data=values)
+    # print(r.__dict__)
+    # print('----File Sent----')
+    # path = r.json()['poll_path']
+    # print(path)
+    # os.remove('docker_dir.tar.gz')
+    # #if dockerfile copied then remove
+    # if args[dockerfile_index] == "dockerfile_vdiff":
+    #     os.remove(args[-1]+"dockerfile_vdiff")
     
-    print("----Sending File----")
-    r = requests.post(SERVER_URL, files=files, data=values)
-    print('----File Sent----')
-    path = r.json()['poll_path']
-    print(path)
-    os.remove('docker_dir.tar.gz')
-    #if dockerfile copied then remove
-    if args[dockerfile_index] == "dockerfile_vdiff":
-        os.remove(args[-1]+"dockerfile_vdiff")
-    
-    #Poll for file every 5 seconds
-    print("----Begin Polling----")
-    polling.poll(lambda: requests.get('http://127.0.0.1:5000/poll'+path).status_code == 200, step=5, poll_forever=True)
-    print("----End Polling----")
+    # #Poll for file every 5 seconds
+    # print("----Begin Polling----")
+    # polling.poll(lambda: requests.get('http://127.0.0.1:5000/poll'+path).status_code == 200, step=5, poll_forever=True)
+    # print("----End Polling----")
 
-    # # Save File
-    r = requests.get('http://127.0.0.1:5000/poll'+path)
-    file_name = ''.join(path[1:]) 
-    f = open(file_name, 'wb')
-    f.write(r.content)
-    f.close()
+    # # # Save File
+    # r = requests.get('http://127.0.0.1:5000/poll'+path)
+    # file_name = ''.join(path[1:]) 
+    # f = open(file_name, 'wb')
+    # f.write(r.content)
+    # f.close()
     
-    # #Docker Load
-    os.system("docker load -i "+ file_name)
+    # # #Docker Load
+    # os.system("docker load -i "+ file_name)
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
+
+
+#helper functions
+#get full file list
+def full_ignore_list(files_location, ignored_files):
+    
+    out = []
+    print("full_ignore_list", ignored_files)
+    for i in ignored_files:
+        out += glob.glob(files_location+i,recursive=True)
+    return out
