@@ -68,7 +68,7 @@ def _get_dockerignore_files(build_context):
         fileObj = open(dockerignore_file_location, "r")
         ignored_files = fileObj.read().splitlines()
         fileObj.close()
-        ignored_files = full_ignore_list(build_context, ignored_files)
+        ignored_files = _full_ignore_list(build_context, ignored_files)
     
     return ignored_files
 
