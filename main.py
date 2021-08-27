@@ -2,7 +2,7 @@ import click, subprocess, getpass, shutil, requests, os, polling, glob, tarfile
 from datetime import datetime
 
 
-SERVER_URL = 'http://127.0.0.1:5000'
+SERVER_URL = 'https://getdaemon.com'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
