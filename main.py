@@ -1,5 +1,8 @@
 import click, subprocess, getpass, shutil, requests, os, polling, glob, tarfile
-SERVER_URL = 'https://getdaemon.com'
+from datetime import datetime
+
+
+SERVER_URL = 'http://127.0.0.1:5000'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -57,6 +60,7 @@ def _full_ignore_list(files_location, ignored_files):
     print("full_ignore_list", ignored_files)
     for i in ignored_files:
         out += glob.glob(files_location+i,recursive=True)
+    out.append(".dockerignore")
     return out
 
 def _get_dockerignore_files(build_context):
@@ -114,34 +118,43 @@ def run_custom_build_logic(args):
 
     if not build_context[-1] == "/":
         build_context += '/'
-
+    
+    print("[TIMER] -- before docker ignore", datetime.now().strftime("%H:%M:%S"))
     ignored_files = _get_dockerignore_files(build_context)
     _add_dockerfile_to_build_context(args, build_context)
+    print("[TIMER] -- after docker ignore", datetime.now().strftime("%H:%M:%S"))
+    
+    print("[TIMER] -- before tar", datetime.now().strftime("%H:%M:%S"))
     tar = tarfile.open("docker_dir.tar.gz", "w:gz")
     tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x)
     tar.close()
+    print("[TIMER] -- after tar", datetime.now().strftime("%H:%M:%S"))
 
     print(build_context, build_context_index, args[build_context_index])
     args[build_context_index] = "."
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
     values = { 'build_arguments': " ".join(args) }
-    
+
+    print("[TIMER] -- before sending", datetime.now().strftime("%H:%M:%S"))    
     r = requests.post(SERVER_URL, files=files, data=values)
     path = r.json()['poll_path']
-    
+    print("[TIMER] -- after sending", datetime.now().strftime("%H:%M:%S")) 
+
     _clear_created_files(build_context, args)
-    
+    print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
     print("----Begin Polling----")
     polling.poll(lambda: requests.get(SERVER_URL + '/poll' + path).status_code == 200, step=5, poll_forever=True)
     print("----End Polling----")
-
+    print("[TIMER] -- after polling", datetime.now().strftime("%H:%M:%S"))    
     r = requests.get(SERVER_URL + '/poll' + path)
     file_name = ''.join(path[1:]) 
     f = open(file_name, 'wb')
     f.write(r.content)
     f.close()
-    
+    print("[TIMER] -- before docker load", datetime.now().strftime("%H:%M:%S"))    
     os.system("docker load -i "+ file_name)
+    print("docker load -i "+ file_name)
+    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))   
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
