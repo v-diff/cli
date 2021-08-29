@@ -91,8 +91,10 @@ def _add_dockerfile_to_build_context(args, build_context):
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
 
-def _clear_created_files(build_context, args):
+def _clear_created_files(build_context, args, path):
+    print(path)
     os.remove('docker_dir.tar.gz')
+    os.remove(path)
     if "dockerfile_vdiff" in args:
         os.remove(build_context+"dockerfile_vdiff")
 
@@ -145,7 +147,6 @@ def run_custom_build_logic(args):
     uuid = response_json['uuid']
     print("[TIMER] -- after sending", datetime.now().strftime("%H:%M:%S")) 
 
-    _clear_created_files(build_context, args)
     print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
     print("----Begin Polling----")
     polling.poll(lambda: requests.get(SERVER_URL + '/poll' + path).status_code == 200, step=5, poll_forever=True)
@@ -160,7 +161,8 @@ def run_custom_build_logic(args):
     requests.post(SERVER_URL + '/clear_data/' + uuid)    
     os.system("docker load -i "+ file_name)
     print("docker load -i "+ file_name)
-    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))   
+    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
+    _clear_created_files(build_context, args,path[1:]) 
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
