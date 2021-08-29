@@ -92,7 +92,6 @@ def _add_dockerfile_to_build_context(args, build_context):
         print("_add_dockerfile end ",args)
 
 def _clear_created_files(build_context, args, path):
-    print(path)
     os.remove('docker_dir.tar.gz')
     os.remove(path)
     if "dockerfile_vdiff" in args:
