@@ -60,7 +60,8 @@ def _full_ignore_list(files_location, ignored_files):
     out = []
     print("full_ignore_list", ignored_files)
     for i in ignored_files:
-        out += glob.glob(files_location+i,recursive=True)
+        if i:
+            out += glob.glob(files_location+i,recursive=True)
     out.append(".dockerignore")
     return out
 
