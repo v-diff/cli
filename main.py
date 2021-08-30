@@ -161,5 +161,8 @@ def run_custom_build_logic(args):
     print("docker load -i "+ file_name)
     print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))   
 
+    print("[MEMORY LEAK FIX] Clear .tar.gz file", file_name)
+    os.remove(file_name)
+
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
