@@ -1,9 +1,9 @@
-import click, subprocess, getpass, shutil, requests, os, polling, glob, tarfile
+import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time
 from datetime import datetime
 
 
-SERVER_URL = 'https://getdaemon.com'
-# SERVER_URL = 'http://127.0.0.1:5000'
+# SERVER_URL = 'https://getdaemon.com'
+SERVER_URL = 'http://127.0.0.1:5000'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -148,7 +148,14 @@ def run_custom_build_logic(args):
 
     print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
     print("----Begin Polling----")
-    polling.poll(lambda: requests.get(SERVER_URL + '/poll' + path).status_code == 200, step=5, poll_forever=True)
+    while True:
+        time.sleep(5)
+        response = requests.head(SERVER_URL + '/poll' + path)
+        if response.status_code == 200:
+            break
+        
+        print("Waiting for file to be built...")
+    
     print("----End Polling----")
     print("[TIMER] -- after polling", datetime.now().strftime("%H:%M:%S"))    
     r = requests.get(SERVER_URL + '/poll' + path)
