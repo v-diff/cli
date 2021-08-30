@@ -136,7 +136,7 @@ def run_custom_build_logic(args):
     print(build_context, build_context_index, args[build_context_index])
     args[build_context_index] = "."
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
-    values = { 'build_arguments': " ".join(args) }
+    values = { 'build_arguments': " ".join(args[1:]) }
 
     print("[TIMER] -- before sending", datetime.now().strftime("%H:%M:%S"))    
     r = requests.post(SERVER_URL, files=files, data=values)
