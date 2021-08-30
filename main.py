@@ -157,14 +157,11 @@ def run_custom_build_logic(args):
     f.write(r.content)
     f.close()
     print("[TIMER] -- before docker load", datetime.now().strftime("%H:%M:%S"))    
-    requests.post(SERVER_URL + '/clear_data/' + uuid)    
+    # requests.post(SERVER_URL + '/clear_data/' + uuid)    
     os.system("docker load -i "+ file_name)
     print("docker load -i "+ file_name)
     print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
-    _clear_created_files(build_context, args,path[1:]) 
-
-    print("[MEMORY LEAK FIX] Clear .tar.gz file", file_name)
-    os.remove(file_name)
+    # _clear_created_files(build_context, args,path[1:]) 
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
