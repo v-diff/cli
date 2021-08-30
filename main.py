@@ -60,7 +60,8 @@ def _full_ignore_list(files_location, ignored_files):
     out = []
     print("full_ignore_list", ignored_files)
     for i in ignored_files:
-        out += glob.glob(files_location+i,recursive=True)
+        if i:
+            out += glob.glob(files_location+i,recursive=True)
     out.append(".dockerignore")
     return out
 
@@ -90,8 +91,9 @@ def _add_dockerfile_to_build_context(args, build_context):
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
 
-def _clear_created_files(build_context, args):
+def _clear_created_files(build_context, args, path):
     os.remove('docker_dir.tar.gz')
+    os.remove(path)
     if "dockerfile_vdiff" in args:
         os.remove(build_context+"dockerfile_vdiff")
 
@@ -144,7 +146,6 @@ def run_custom_build_logic(args):
     uuid = response_json['uuid']
     print("[TIMER] -- after sending", datetime.now().strftime("%H:%M:%S")) 
 
-    _clear_created_files(build_context, args)
     print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
     print("----Begin Polling----")
     polling.poll(lambda: requests.get(SERVER_URL + '/poll' + path).status_code == 200, step=5, poll_forever=True)
@@ -159,7 +160,8 @@ def run_custom_build_logic(args):
     requests.post(SERVER_URL + '/clear_data/' + uuid)    
     os.system("docker load -i "+ file_name)
     print("docker load -i "+ file_name)
-    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))   
+    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
+    _clear_created_files(build_context, args,path[1:]) 
 
     print("[MEMORY LEAK FIX] Clear .tar.gz file", file_name)
     os.remove(file_name)
