@@ -1,0 +1,14 @@
+FROM node:14 AS server-build
+WORKDIR /root/
+COPY package.json ./server/
+COPY package-lock.json ./server/
+COPY babel.config.js ./server/
+COPY tsconfig.json ./server/
+COPY src/ ./server/src
+
+WORKDIR ./server/
+RUN npm install && npm run build
+
+EXPOSE 3080
+
+CMD ["npm", "run", "start"]

@@ -4,7 +4,6 @@ from datetime import datetime
 
 # SERVER_URL = 'https://getdaemon.com'
 SERVER_URL = 'http://127.0.0.1:5000'
-
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
 def cli(cmd):
@@ -56,13 +55,14 @@ def _get_build_context(args):
 
     return None, None 
 
-def _full_ignore_list(files_location, ignored_files):
+def _full_ignore_list(build_context, ignored_files):
     out = []
     print("full_ignore_list", ignored_files)
     for i in ignored_files:
         if i:
-            out += glob.glob(files_location+i,recursive=True)
+            out += glob.glob(build_context+i,recursive=True)
     out.append(".dockerignore")
+    print("Full Ignore List: ", out)
     return out
 
 def _get_dockerignore_files(build_context):
@@ -90,6 +90,7 @@ def _add_dockerfile_to_build_context(args, build_context):
         shutil.copy(path, build_context + "dockerfile_vdiff")
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
+        return True
 
 def _clear_created_files(build_context, args, path):
     os.remove('docker_dir.tar.gz')
@@ -129,6 +130,7 @@ def run_custom_build_logic(args):
     
     print("[TIMER] -- before tar", datetime.now().strftime("%H:%M:%S"))
     tar = tarfile.open("docker_dir.tar.gz", "w:gz")
+
     tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x)
     tar.close()
     print("[TIMER] -- after tar", datetime.now().strftime("%H:%M:%S"))
@@ -168,7 +170,7 @@ def run_custom_build_logic(args):
     os.system("docker load -i "+ file_name)
     print("docker load -i "+ file_name)
     print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
-    _clear_created_files(build_context, args,path[1:]) 
+    #_clear_created_files(build_context, args,path[1:]) 
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
