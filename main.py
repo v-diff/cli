@@ -130,8 +130,7 @@ def run_custom_build_logic(args):
     
     print("[TIMER] -- before tar", datetime.now().strftime("%H:%M:%S"))
     tar = tarfile.open("docker_dir.tar.gz", "w:gz")
-
-    tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x)
+    tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x, arcname='.')
     tar.close()
     print("[TIMER] -- after tar", datetime.now().strftime("%H:%M:%S"))
 
@@ -170,7 +169,7 @@ def run_custom_build_logic(args):
     os.system("docker load -i "+ file_name)
     print("docker load -i "+ file_name)
     print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
-    #_clear_created_files(build_context, args,path[1:]) 
+    _clear_created_files(build_context, args,path[1:]) 
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
