@@ -129,7 +129,7 @@ def run_custom_build_logic(args):
     
     print("[TIMER] -- before tar", datetime.now().strftime("%H:%M:%S"))
     tar = tarfile.open("docker_dir.tar.gz", "w:gz")
-    tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x)
+    tar.add(build_context, filter=lambda x: None if x.name in ignored_files else x, arcname='.')
     tar.close()
     print("[TIMER] -- after tar", datetime.now().strftime("%H:%M:%S"))
 
