@@ -1,9 +1,9 @@
-import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time
+import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time, json
 from datetime import datetime
 
 
-# SERVER_URL = 'https://getdaemon.com'
-SERVER_URL = 'http://127.0.0.1:5000'
+SERVER_URL = 'https://getdaemon.com'
+# SERVER_URL = 'http://127.0.0.1:5000'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -142,33 +142,9 @@ def run_custom_build_logic(args):
     r = requests.post(SERVER_URL, files=files, data=values)
     print(r.__dict__)
     response_json = r.json()
-    path = response_json['poll_path']
-    uuid = response_json['uuid']
-    print("[TIMER] -- after sending", datetime.now().strftime("%H:%M:%S")) 
-
-    print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
-    print("----Begin Polling----")
-    while True:
-        time.sleep(5)
-        response = requests.head(SERVER_URL + '/poll' + path)
-        if response.status_code == 200:
-            break
-        
-        print("Waiting for file to be built...")
+    print("response from cli_flask is ", response_json)
+    built_image_hash = response_json['image_id']
+    os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (built_image_hash))
     
-    print("----End Polling----")
-    print("[TIMER] -- after polling", datetime.now().strftime("%H:%M:%S"))    
-    r = requests.get(SERVER_URL + '/poll' + path)
-    file_name = ''.join(path[1:]) 
-    f = open(file_name, 'wb')
-    f.write(r.content)
-    f.close()
-    print("[TIMER] -- before docker load", datetime.now().strftime("%H:%M:%S"))    
-    requests.post(SERVER_URL + '/clear_data/' + uuid)    
-    os.system("docker load -i "+ file_name)
-    print("docker load -i "+ file_name)
-    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
-    _clear_created_files(build_context, args,path[1:]) 
-
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
