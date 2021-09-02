@@ -2,8 +2,9 @@ import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time, js
 from datetime import datetime
 
 
-SERVER_URL = 'https://getdaemon.com'
-# SERVER_URL = 'http://127.0.0.1:5000'
+# SERVER_URL = 'https://getdaemon.com'
+SERVER_URL = 'http://127.0.0.1:5000'
+# SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -142,9 +143,22 @@ def run_custom_build_logic(args):
     r = requests.post(SERVER_URL, files=files, data=values)
     print(r.__dict__)
     response_json = r.json()
-    print("response from cli_flask is ", response_json)
-    built_image_hash = response_json['image_id']
-    os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (built_image_hash))
+    path = response_json["poll_path"]
+    print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
+    
+    image_sha = None 
+    while True:
+        time.sleep(5)
+        print("Building on our servers...")
+        response = requests.get(SERVER_URL + '/poll' + path)
+        if response.status_code == 200:
+            print("JSON response object is", response.json())
+            image_sha = response.json()["image_sha"]
+            break
+    
+    print("Pulling docker image SHA", image_sha)
+    os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (image_sha))
+    requests.post(SERVER_URL + '/clear_data' + path)
     
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
