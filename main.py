@@ -138,13 +138,17 @@ def run_custom_build_logic(args):
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
     values = { 'build_arguments': " ".join(args[1:]) }
 
-    print("[TIMER] -- before sending", datetime.now().strftime("%H:%M:%S"))    
+    print("[TIMER] -- BEFORE sending build ctx + dockerfile to server", datetime.now().strftime("%H:%M:%S"))    
     r = requests.post(SERVER_URL, files=files, data=values)
+    print("[TIMER] -- AFTER sending build ctx + dockerfile to server", datetime.now().strftime("%H:%M:%S"))    
     print(r.__dict__)
     response_json = r.json()
     print("response from cli_flask is ", response_json)
     built_image_hash = response_json['image_id']
+
+    print("[TIMER] -- BEFORE docker pulling from ECR repo", datetime.now().strftime("%H:%M:%S"))    
     os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (built_image_hash))
+    print("[TIMER] -- AFTER docker pulling from ECR repo", datetime.now().strftime("%H:%M:%S"))    
     
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
