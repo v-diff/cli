@@ -170,7 +170,6 @@ def run_custom_build_logic(args):
     print("docker load -i "+ file_name)
     print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
     _clear_created_files(build_context, args,path[1:]) 
-    return True
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
