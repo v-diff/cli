@@ -2,8 +2,8 @@ import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time
 from datetime import datetime
 
 
-# SERVER_URL = 'https://getdaemon.com'
-SERVER_URL = 'http://127.0.0.1:5000'
+SERVER_URL = 'https://getdaemon.com'
+#SERVER_URL = 'http://127.0.0.1:5000'
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
 def cli(cmd):
@@ -170,6 +170,7 @@ def run_custom_build_logic(args):
     print("docker load -i "+ file_name)
     print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
     _clear_created_files(build_context, args,path[1:]) 
+    return True
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
