@@ -1,9 +1,11 @@
-import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time
+import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time, json
 from datetime import datetime
 
 
 SERVER_URL = 'https://getdaemon.com'
-#SERVER_URL = 'http://127.0.0.1:5000'
+# SERVER_URL = 'http://127.0.0.1:5000'
+# SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
+
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
 def cli(cmd):
@@ -55,14 +57,13 @@ def _get_build_context(args):
 
     return None, None 
 
-def _full_ignore_list(build_context, ignored_files):
+def _full_ignore_list(files_location, ignored_files):
     out = []
     print("full_ignore_list", ignored_files)
     for i in ignored_files:
         if i:
-            out += glob.glob(build_context+i,recursive=True)
+            out += glob.glob(files_location+i,recursive=True)
     out.append(".dockerignore")
-    print("Full Ignore List: ", out)
     return out
 
 def _get_dockerignore_files(build_context):
@@ -90,7 +91,6 @@ def _add_dockerfile_to_build_context(args, build_context):
         shutil.copy(path, build_context + "dockerfile_vdiff")
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
-        return True
 
 def _clear_created_files(build_context, args, path):
     os.remove('docker_dir.tar.gz')
@@ -99,6 +99,7 @@ def _clear_created_files(build_context, args, path):
         os.remove(build_context+"dockerfile_vdiff")
 
 def run_custom_build_logic(args):
+    print("[TIMER] -- BEGIN VDIFF", datetime.now().strftime("%H:%M:%S"))    
     print("Build arguments are: ", args)
     args = list(args)
 
@@ -139,37 +140,32 @@ def run_custom_build_logic(args):
     files = {'zipped_docker_dir': open('docker_dir.tar.gz','rb')}
     values = { 'build_arguments': " ".join(args[1:]) }
 
-    print("[TIMER] -- before sending", datetime.now().strftime("%H:%M:%S"))    
+    print("[TIMER] -- BEFORE sending build ctx + dockerfile to server", datetime.now().strftime("%H:%M:%S"))    
     r = requests.post(SERVER_URL, files=files, data=values)
+    print("[TIMER] -- AFTER sending build ctx + dockerfile to server", datetime.now().strftime("%H:%M:%S"))    
     print(r.__dict__)
     response_json = r.json()
-    path = response_json['poll_path']
-    uuid = response_json['uuid']
-    print("[TIMER] -- after sending", datetime.now().strftime("%H:%M:%S")) 
-
-    print("[TIMER] -- before Polling", datetime.now().strftime("%H:%M:%S"))    
-    print("----Begin Polling----")
+    path = response_json["poll_path"]
+    print("[TIMER] -- BEFORE Polling", datetime.now().strftime("%H:%M:%S"))    
+    
+    image_sha = None 
     while True:
         time.sleep(5)
-        response = requests.head(SERVER_URL + '/poll' + path)
+        print("Building on our servers...")
+        response = requests.get(SERVER_URL + '/poll' + path)
         if response.status_code == 200:
+            print("JSON response object is", response.json())
+            image_sha = response.json()["image_sha"]
             break
-        
-        print("Waiting for file to be built...")
-    
-    print("----End Polling----")
-    print("[TIMER] -- after polling", datetime.now().strftime("%H:%M:%S"))    
-    r = requests.get(SERVER_URL + '/poll' + path)
-    file_name = ''.join(path[1:]) 
-    f = open(file_name, 'wb')
-    f.write(r.content)
-    f.close()
-    print("[TIMER] -- before docker load", datetime.now().strftime("%H:%M:%S"))    
-    requests.post(SERVER_URL + '/clear_data/' + uuid)    
-    os.system("docker load -i "+ file_name)
-    print("docker load -i "+ file_name)
-    print("[TIMER] -- after docker load", datetime.now().strftime("%H:%M:%S"))  
-    _clear_created_files(build_context, args,path[1:]) 
+    print("[TIMER] -- AFTER Polling", datetime.now().strftime("%H:%M:%S"))    
+    print("Pulling docker image SHA", image_sha)
+    print("[TIMER] -- BEFORE Pull", datetime.now().strftime("%H:%M:%S"))
+    os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (image_sha))
+    print("[TIMER] -- AFTER Pull", datetime.now().strftime("%H:%M:%S"))
+    print("[TIMER] -- BEFORE clear_data", datetime.now().strftime("%H:%M:%S"))
+    requests.post(SERVER_URL + '/clear_data' + path)
+    print("[TIMER] -- AFTER clear_data", datetime.now().strftime("%H:%M:%S"))
+    print("[TIMER] -- END VDIFF", datetime.now().strftime("%H:%M:%S"))    
 
 def fallback_to_docker(cmd):
     subprocess.call("docker " + ' '.join(cmd), shell=True)
