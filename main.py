@@ -3,8 +3,8 @@ from datetime import datetime
 
 
 SERVER_URL = 'https://getdaemon.com'
-# SERVER_URL = 'http://127.0.0.1:5000'
-# SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
+#SERVER_URL = 'http://127.0.0.1:5000'
+#SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -39,6 +39,9 @@ def _is_dockerfile_present(args):
     return os.path.isfile('Dockerfile')
 
 def _get_build_context(args):
+    single_flags = ['--compress','--squash','--rm', '--force-rm',
+                     '--disable-content-trust','--no-cache','--stream','--quiet', '-q','--pull']
+
     flag = False
     for i, arg in enumerate(args):
         if flag:
@@ -49,8 +52,11 @@ def _get_build_context(args):
             flag = False 
             continue 
         
-        if arg.startswith("-"): 
-            flag = True
+        if arg.startswith("-"):
+            if arg in single_flags:
+                flag = False
+            else: 
+                flag = True
             continue 
 
         return i+1, arg
@@ -112,6 +118,10 @@ def run_custom_build_logic(args):
         print("Cannot find dockerfile. Specify path to Dockerfile with '-f' or place Dockerfile in current directory")
         return 
 
+    if '-o' in args or '--output' in args:
+        print("vdiff build does not support -o/--output flag.")
+        return 
+
     username = _get_username()
     build_context_index, build_context = _get_build_context(args[1:])
     
@@ -165,6 +175,7 @@ def run_custom_build_logic(args):
     print("[TIMER] -- BEFORE clear_data", datetime.now().strftime("%H:%M:%S"))
     requests.post(SERVER_URL + '/clear_data' + path)
     print("[TIMER] -- AFTER clear_data", datetime.now().strftime("%H:%M:%S"))
+    _clear_created_files(build_context, args, path)
     print("[TIMER] -- END VDIFF", datetime.now().strftime("%H:%M:%S"))    
 
 def fallback_to_docker(cmd):
