@@ -3,8 +3,8 @@ from datetime import datetime
 
 
 SERVER_URL = 'https://getdaemon.com'
-# SERVER_URL = 'http://127.0.0.1:5000'
-# SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
+#SERVER_URL = 'http://127.0.0.1:5000'
+#SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -39,6 +39,9 @@ def _is_dockerfile_present(args):
     return os.path.isfile('Dockerfile')
 
 def _get_build_context(args):
+    single_flags = ['--compress','--squash','--rm', '--force-rm',
+                     '--disable-content-trust','--no-cache','--stream','--quiet', '-q','--pull']
+
     flag = False
     for i, arg in enumerate(args):
         if flag:
@@ -49,8 +52,11 @@ def _get_build_context(args):
             flag = False 
             continue 
         
-        if arg.startswith("-"): 
-            flag = True
+        if arg.startswith("-"):
+            if arg in single_flags:
+                flag = False
+            else: 
+                flag = True
             continue 
 
         return i+1, arg
@@ -92,9 +98,8 @@ def _add_dockerfile_to_build_context(args, build_context):
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
 
-def _clear_created_files(build_context, args, path):
+def _clear_created_files(build_context, args):
     os.remove('docker_dir.tar.gz')
-    os.remove(path)
     if "dockerfile_vdiff" in args:
         os.remove(build_context+"dockerfile_vdiff")
 
@@ -110,6 +115,10 @@ def run_custom_build_logic(args):
 
     if not _is_dockerfile_present(args):
         print("Cannot find dockerfile. Specify path to Dockerfile with '-f' or place Dockerfile in current directory")
+        return 
+
+    if '-o' in args or '--output' in args:
+        print("vdiff build does not support -o/--output flag.")
         return 
 
     username = _get_username()
@@ -165,6 +174,7 @@ def run_custom_build_logic(args):
     print("[TIMER] -- BEFORE clear_data", datetime.now().strftime("%H:%M:%S"))
     requests.post(SERVER_URL + '/clear_data' + path)
     print("[TIMER] -- AFTER clear_data", datetime.now().strftime("%H:%M:%S"))
+    _clear_created_files(build_context, args)
     print("[TIMER] -- END VDIFF", datetime.now().strftime("%H:%M:%S"))    
 
 def fallback_to_docker(cmd):
