@@ -98,9 +98,8 @@ def _add_dockerfile_to_build_context(args, build_context):
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
 
-def _clear_created_files(build_context, args, path):
+def _clear_created_files(build_context, args):
     os.remove('docker_dir.tar.gz')
-    os.remove(path)
     if "dockerfile_vdiff" in args:
         os.remove(build_context+"dockerfile_vdiff")
 
@@ -175,7 +174,7 @@ def run_custom_build_logic(args):
     print("[TIMER] -- BEFORE clear_data", datetime.now().strftime("%H:%M:%S"))
     requests.post(SERVER_URL + '/clear_data' + path)
     print("[TIMER] -- AFTER clear_data", datetime.now().strftime("%H:%M:%S"))
-    _clear_created_files(build_context, args, path)
+    _clear_created_files(build_context, args)
     print("[TIMER] -- END VDIFF", datetime.now().strftime("%H:%M:%S"))    
 
 def fallback_to_docker(cmd):
