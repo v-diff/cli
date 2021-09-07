@@ -1,5 +1,5 @@
 click>=7.1.2
 requests
-glob
+glob3
 datetime
 tarfile
