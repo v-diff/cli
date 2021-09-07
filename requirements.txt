@@ -2,4 +2,3 @@ click>=7.1.2
 requests
 glob2
 datetime
-tarfile
