@@ -3,8 +3,8 @@ from datetime import datetime
 
 
 #SERVER_URL = 'https://getdaemon.com'
-SERVER_URL = 'http://127.0.0.1:5000'
-#SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
+#SERVER_URL = 'http://127.0.0.1:5000'
+SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -174,14 +174,14 @@ def run_custom_build_logic(args):
             break
     if 'image_sha' in response.json():
         image_sha = response.json()["image_sha"]
+        print("[TIMER] -- AFTER Polling", datetime.now().strftime("%H:%M:%S"))    
+        print("Pulling docker image SHA", image_sha)
+        print("[TIMER] -- BEFORE Pull", datetime.now().strftime("%H:%M:%S"))
+        os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (image_sha))
+        print("[TIMER] -- AFTER Pull", datetime.now().strftime("%H:%M:%S"))
     else:
         _process_json_error(response)
-        return
-    print("[TIMER] -- AFTER Polling", datetime.now().strftime("%H:%M:%S"))    
-    print("Pulling docker image SHA", image_sha)
-    print("[TIMER] -- BEFORE Pull", datetime.now().strftime("%H:%M:%S"))
-    os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (image_sha))
-    print("[TIMER] -- AFTER Pull", datetime.now().strftime("%H:%M:%S"))
+    
     print("[TIMER] -- BEFORE clear_data", datetime.now().strftime("%H:%M:%S"))
     requests.post(SERVER_URL + '/clear_data' + path)
     print("[TIMER] -- AFTER clear_data", datetime.now().strftime("%H:%M:%S"))
