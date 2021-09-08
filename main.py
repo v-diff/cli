@@ -2,9 +2,9 @@ import click, subprocess, getpass, shutil, requests, os, glob, tarfile, time, js
 from datetime import datetime
 
 
-SERVER_URL = 'https://getdaemon.com'
+#SERVER_URL = 'https://getdaemon.com'
 #SERVER_URL = 'http://127.0.0.1:5000'
-#SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
+SERVER_URL = 'http://faster-docker-build-staging.us-west-2.elasticbeanstalk.com/'
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('cmd', nargs=-1)
@@ -98,6 +98,13 @@ def _add_dockerfile_to_build_context(args, build_context):
         args[index] = "dockerfile_vdiff"
         print("_add_dockerfile end ",args)
 
+def _process_json_error(response):
+    if 'build_error' in response.json():
+        print("BUILD ERROR: ", response.json()["build_error"])
+    elif 'error' in response.json():
+        print("ERROR: ",response.json()["error"])
+    return ''
+
 def _clear_created_files(build_context, args):
     os.remove('docker_dir.tar.gz')
     if "dockerfile_vdiff" in args:
@@ -164,13 +171,17 @@ def run_custom_build_logic(args):
         response = requests.get(SERVER_URL + '/poll' + path)
         if response.status_code == 200:
             print("JSON response object is", response.json())
-            image_sha = response.json()["image_sha"]
             break
-    print("[TIMER] -- AFTER Polling", datetime.now().strftime("%H:%M:%S"))    
-    print("Pulling docker image SHA", image_sha)
-    print("[TIMER] -- BEFORE Pull", datetime.now().strftime("%H:%M:%S"))
-    os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (image_sha))
-    print("[TIMER] -- AFTER Pull", datetime.now().strftime("%H:%M:%S"))
+    if 'image_sha' in response.json():
+        image_sha = response.json()["image_sha"]
+        print("[TIMER] -- AFTER Polling", datetime.now().strftime("%H:%M:%S"))    
+        print("Pulling docker image SHA", image_sha)
+        print("[TIMER] -- BEFORE Pull", datetime.now().strftime("%H:%M:%S"))
+        os.system('docker pull public.ecr.aws/u9v9c4r4/test-registry:%s' % (image_sha))
+        print("[TIMER] -- AFTER Pull", datetime.now().strftime("%H:%M:%S"))
+    else:
+        _process_json_error(response)
+    
     print("[TIMER] -- BEFORE clear_data", datetime.now().strftime("%H:%M:%S"))
     requests.post(SERVER_URL + '/clear_data' + path)
     print("[TIMER] -- AFTER clear_data", datetime.now().strftime("%H:%M:%S"))
